@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конструктор и проведение видео-скрининга</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #f4f7fc;
+            --container-bg: #ffffff;
+            --primary-text: #2c3e50;
+            --secondary-text: #7f8c8d;
+            --border-color: #e8ecf1;
+            --accent-blue: #3498db;
+            --accent-green: #2ecc71;
+            --accent-red: #e74c3c;
+            --accent-purple: #8e44ad;
+            --shadow: 0 4px 6px rgba(0,0,0,0.04), 0 10px 20px rgba(0,0,0,0.06);
+            --radius: 12px;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--primary-text);
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            box-sizing: border-box;
+            text-rendering: optimizeLegibility;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        .screen {
+            width: 100%;
+            max-width: 1200px;
+            background-color: var(--container-bg);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 40px;
+            box-sizing: border-box;
+            border: 1px solid var(--border-color);
+            display: none;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .screen.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h1, h2, h3 {
+            text-align: center;
+            color: var(--primary-text);
+            margin-top: 0;
+            font-weight: 700;
+        }
+        h2 { margin-bottom: 25px; }
+        h3 { margin-bottom: 20px; font-weight: 500; }
+
+        .info-screen-content { max-width: 800px; margin: 0 auto; text-align: center; }
+        
+        button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 14px 28px;
+            font-size: 1em;
+            font-weight: 500;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        button:disabled { background-color: #bdc3c7 !important; cursor: not-allowed; opacity: 0.7; box-shadow: none; transform: none; }
+        button:hover:not(:disabled) { transform: translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.1); filter: brightness(1.05); }
+        
+        #agreeAndSetupBtn, #finalizeSetupBtn { background-color: var(--accent-purple); }
+        #startBtn { background-color: var(--accent-green); }
+        #restartBtn, #checkDeviceBtn, #addQuestionBtn { background-color: var(--accent-blue); }
+        #recordBtn { background-color: var(--accent-green); }
+        #recordBtn.recording { background-color: var(--accent-red); animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); } 70% { box-shadow: 0 0 0 10px rgba(231, 76, 60, 0); } 100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); } }
+        #saveBtn { background-color: #16a085; }
+
+        #deviceCheckStatus { font-weight: 500; min-height: 24px; margin-top: 20px; }
+        .status-success { color: var(--accent-green); }
+        .status-error { color: var(--accent-red); }
+        
+        .constructor-layout { display: flex; gap: 40px; }
+        .constructor-form, .constructor-preview { flex: 1; }
+        .form-group { margin-bottom: 20px; text-align: left; }
+        .form-group label { font-weight: 500; display: block; margin-bottom: 8px; color: var(--secondary-text); }
+        .form-group input[type="text"], .form-group input[type="number"] {
+            width: 100%; padding: 12px 15px; border-radius: 8px; border: 1px solid var(--border-color); box-sizing: border-box; font-size: 1em; transition: all 0.2s ease;
+        }
+        .form-group input:focus { border-color: var(--accent-blue); box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1); outline: none; }
+        .radio-group { display: flex; gap: 15px; }
+
+        #questionListConstructor { list-style-type: none; padding: 0; }
+        .constructor-item {
+            display: flex; justify-content: space-between; align-items: center; background: #f8f9fa; padding: 12px 15px; border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border-color);
+        }
+        .constructor-item .correct-answer { font-size: 0.9em; color: var(--accent-purple); font-weight: 500; margin-left: 10px; }
+        .remove-question-btn {
+            background-color: transparent; border: none; color: var(--secondary-text); cursor: pointer; padding: 5px; border-radius: 50%; display: flex; align-items: center; justify-content: center; transition: all 0.2s ease; box-shadow: none;
+        }
+        .remove-question-btn:hover { background-color: #fde8e8; color: var(--accent-red); }
+        
+        .main-layout { display: flex; gap: 30px; }
+        .center-column { flex: 2; display: flex; flex-direction: column; align-items: center; }
+        .right-column { flex: 1; display: flex; flex-direction: column; }
+        .video-container { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #111; border-radius: var(--radius); margin-bottom: 20px; overflow: hidden; box-shadow: var(--shadow); }
+        #videoPreview { display: block; width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1); }
+        #status { text-align: center; font-weight: 500; min-height: 20px; color: var(--secondary-text); width: 100%; }
+        
+        .card { background-color: #f8f9fa; border: 1px solid var(--border-color); border-left: 4px solid var(--accent-blue); padding: 20px; margin-bottom: 20px; border-radius: 8px; flex-grow: 1; }
+        #question { font-size: 1.3em; font-weight: 500; }
+        
+        .results-container { background-color: transparent; border: 1px solid var(--border-color); border-radius: var(--radius); padding: 20px; height: 100%; min-height: 350px; overflow-y: auto; }
+        #resultsList { list-style-type: none; padding: 0; margin: 0; }
+        .result-item { background: var(--container-bg); border-radius: 8px; padding: 15px; margin-bottom: 10px; border: 1px solid #e0e5ec; }
+        .result-item p { margin: 5px 0; }
+        .evaluation-correct { color: var(--accent-green); font-weight: bold; }
+        .evaluation-incorrect { color: var(--accent-red); font-weight: bold; }
+        
+        #historySection { width: 100%; max-width: 1200px; margin-top: 30px; }
+        .history-table { width: 100%; border-collapse: collapse; background: var(--container-bg); border-radius: 8px; overflow: hidden; box-shadow: var(--shadow); }
+        .history-table th, .history-table td { padding: 12px 15px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        .history-table th { background-color: #f8f9fa; font-weight: 700; }
+
+        #recognitionResult { font-size: 1.1em; color: var(--primary-text); min-height: 50px;}
+    </style>
+</head>
+<body>
+
+    <div id="instructionsScreen" class="screen active">
+        <div class="info-screen-content">
+            <h1>Добро пожаловать в конструктор видео-скрининга!</h1>
+            <p style="font-size: 1.2em; line-height: 1.6;">Создайте тест: добавьте вопросы, укажите ключевые слова для правильных ответов и прикрепите видео, если это необходимо.
+При запуске теста разрешите доступ к камере и микрофону. Для стабильной работы рекомендуем использовать браузер Chrome на компьютере.</p>
+            <br>
+            <button id="agreeAndSetupBtn">Понятно, перейти к созданию теста</button>
+        </div>
+    </div>
+
+    <div id="constructorScreen" class="screen">
+        <h1>Конструктор теста</h1>
+        <div class="constructor-layout">
+            <div class="constructor-form">
+                <h3>1. Добавьте вопрос</h3>
+                <div class="form-group"><label for="questionInput">Текст вопроса</label><input type="text" id="questionInput" placeholder="Например: Какой у вас опыт работы с JavaScript?"></div>
+                <div class="form-group"><label for="correctAnswerInput">Ожидаемый ключевой ответ</label><input type="text" id="correctAnswerInput" placeholder="Например: 5 лет, React, да"></div>
+                <button id="addQuestionBtn">Добавить вопрос</button>
+                <h3 style="margin-top: 30px;">2. Настройте критерии</h3>
+                <div class="form-group"><label for="thresholdInput">Сколько правильных ответов нужно для прохождения</label><input type="number" id="thresholdInput" value="1" min="1"></div>
+                <div class="form-group"><label>Когда сохранять запись</label><div class="radio-group"><label><input type="radio" name="saveCondition" value="successful" checked> Только успешные</label><label><input type="radio" name="saveCondition" value="all"> Всегда</label></div></div>
+                
+                <!-- ADDED: file input for uploading a video in the constructor (only added, nothing removed) -->
+                <h3 style="margin-top: 30px;">3. Загрузите видео (необязательно)</h3>
+                <div class="form-group">
+                    <label for="introVideoInput">Видео для показа во время теста</label>
+                    <input type="file" id="introVideoInput" accept="video/*">
+                </div>
+                <!-- END ADDED -->
+
+                <button id="finalizeSetupBtn">Создать тест</button>
+            </div>
+            <div class="constructor-preview">
+                <h3>Список вопросов</h3>
+                <div class="results-container"><ul id="questionListConstructor"></ul></div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="startInterviewScreen" class="screen">
+        <div class="info-screen-content">
+            <h2>Инструкция для прохождения</h2>
+            <p>Посмотрите видео на странице (если оно есть), прежде чем проходить тест. Для ответа на каждый вопрос нажимайте «Начать ответ», произносите его и кликайте «Закончить ответ» для оценки.</p>
+        
+            <div class="controls" style="flex-direction: column; align-items: center; gap: 20px;">
+                <button id="checkDeviceBtn">Проверить камеру и микрофон</button>
+                <p id="deviceCheckStatus"></p>
+            <div id="uploadedVideoContainer" style="display:none; margin-bottom:10px; text-align:center;">
+                <video id="uploadedVideo" controls
+                 style="width:100%; max-height:252px; border-radius:12px; box-shadow: var(--shadow);"></video>
+            </div>
+                <button id="startBtn" style="display: none;">Начать тест</button>
+            </div>
+        </div>
+    </div>
+
+  
+    <!-- 🟩 ЛЕВАЯ КОЛОНКА -->
+<!-- 🔹 ЧЕТВЁРТАЯ СТРАНИЦА: ПРОХОЖДЕНИЕ ТЕСТА -->
+<div id="interviewScreen" class="screen">
+  <div class="main-layout" style="align-items: flex-start; gap: 20px;">
+    
+    <!-- 🟩 ЛЕВАЯ КОЛОНКА -->
+    <div class="center-column" style="gap: 14px; width: 50%;">
+      <!-- Загруженное видео (если есть) -->
+      
+
+      <!-- Видео пользователя (камера) -->
+      <div class="video-container">
+        <video id="videoPreview" muted autoplay playsinline></video>
+      </div>
+    </div>
+
+    <!-- 🟥 ПРАВАЯ КОЛОНКА -->
+    <div class="right-column" style="display: flex; flex-direction: column; justify-content: center; gap: 14px; width: 50%;">
+
+      <!-- 🔸 1. Текущий вопрос -->
+      <div class="card" style="padding: 14px;">
+        <h3 style="font-size: 0.9em; margin-bottom: 10px;">Текущий вопрос</h3>
+        <p id="question" style="font-size: 0.91em;"></p>
+
+        <!-- Кнопка "Начать ответ" ПОД вопросом -->
+        <div class="controls" style="margin-top: 10px;">
+          <button id="recordBtn" disabled style="padding: 10px 20px; font-size: 0.8em;">Начать ответ</button>
+        </div>
+      </div>
+
+      <!-- 🔸 2. Распознанный ответ -->
+      <div class="card" style="padding: 14px; min-height: 70px;">
+        <h3 style="margin-bottom: 8px;">Распознанный ответ</h3>
+        <p id="recognitionResult" style="font-size: 0.77em;"></p>
+      </div>
+
+      <!-- 🔸 3. Результаты -->
+      <div class="card results-container" style="padding: 14px; min-height: 200px;">
+        <h3 style="margin-bottom: 10px;">Результаты</h3>
+        <ul id="resultsList" style="margin: 0;"></ul>
+      </div>
+
+      <!-- 🔸 4. Статус — маленький, в самом низу -->
+      <p id="status" style="font-size: 0.77em; text-align: center; margin: 0;"></p>
+    </div>
+
+  </div>
+</div>
+
+
+
+
+    <div id="resultsScreen" class="screen">
+        <div class="info-screen-content">
+            <h2 id="resultTitle"></h2>
+            <p id="resultText" style="font-size: 1.2em; margin-bottom: 30px;"></p>
+            <div class="controls" style="flex-direction: row; justify-content: center;">
+                <button id="saveBtn" style="display: none;">Сохранить запись</button>
+                <button id="restartBtn">Создать новый тест</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="historySection" style="display: none;">
+        <h2>История прохождений</h2>
+        <table class="history-table">
+            <thead><tr><th>Дата и время</th><th>Результат</th><th>Счет</th></tr></thead>
+            <tbody id="historyTableBody"></tbody>
+        </table>
+    </div>
+
+ 
+
+    <script>
+        // --- ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ И ЭЛЕМЕНТЫ ---
+        const screens = document.querySelectorAll('.screen');
+        let testQuestions = [];
+        let passingThreshold = 1;
+        let saveCondition = 'successful';
+        let interviewHistory = [];
+        let finalVideoBlob = null;
+        let uploadedIntroVideoURL = null; // ADDED: URL для загруженного видео
+        let uploadedIntroVideoFile = null; // ADDED: файл загруженного видео
+
+        // --- SINGLE getUserMedia STREAM: глобальная переменная и функция-обёртка ---
+        let globalStream = null;
+        async function getMediaStream() {
+            if (globalStream) return globalStream;
+            try {
+                globalStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+                return globalStream;
+            } catch (err) {
+                globalStream = null;
+                throw err;
+            }
+        }
+        
+        function showScreen(screenId) { screens.forEach(screen => screen.classList.toggle('active', screen.id === screenId)); }
+        
+        // --- ЛОГИКА КОНСТРУКТОРА ---
+        const agreeAndSetupBtn = document.getElementById('agreeAndSetupBtn');
+        const questionInput = document.getElementById('questionInput');
+        const correctAnswerInput = document.getElementById('correctAnswerInput');
+        const addQuestionBtn = document.getElementById('addQuestionBtn');
+        const questionListConstructor = document.getElementById('questionListConstructor');
+        const thresholdInput = document.getElementById('thresholdInput');
+        const finalizeSetupBtn = document.getElementById('finalizeSetupBtn');
+        
+        function renderConstructorList() {
+            questionListConstructor.innerHTML = '';
+            if (testQuestions.length === 0) { questionListConstructor.innerHTML = `<li style="text-align: center; color: var(--secondary-text);">Здесь появятся ваши вопросы...</li>`; return; }
+            testQuestions.forEach((q, index) => {
+                const li = document.createElement('li');
+                li.className = 'constructor-item';
+                li.innerHTML = `
+                    <span>${index + 1}. ${q.text} <em class="correct-answer">(Ключевой ответ: "${q.correctAnswer}")</em></span>
+                    <button class="remove-question-btn" data-index="${index}" title="Удалить вопрос">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M17 6H22V8H20V21C20 21.5523 19.5523 22 19 22H5C4.44772 22 4 21.5523 4 21V8H2V6H7V3C7 2.44772 7.44772 2 8 2H16C16.5523 2 17 2.44772 17 3V6ZM18 8H6V20H18V8ZM9 11H11V17H9V11ZM13 11H15V17H13V11ZM9 4V6H15V4H9Z"></path></svg>
+                    </button>
+                `;
+                questionListConstructor.appendChild(li);
+            });
+        }
+        function removeQuestion(index) { testQuestions.splice(index, 1); renderConstructorList(); }
+
+        addQuestionBtn.addEventListener('click', () => {
+            const text = questionInput.value.trim();
+            const correctAnswer = correctAnswerInput.value.trim();
+            if (text && correctAnswer) {
+                testQuestions.push({ text, correctAnswer: correctAnswer.toLowerCase() });
+                questionInput.value = '';
+                correctAnswerInput.value = '';
+                renderConstructorList();
+            } else {
+                alert("Пожалуйста, заполните и текст вопроса, и ожидаемый ответ.");
+            }
+        });
+
+        questionListConstructor.addEventListener('click', (e) => {
+            const button = e.target.closest('.remove-question-btn');
+            if (button) removeQuestion(parseInt(button.dataset.index, 10));
+        });
+
+        agreeAndSetupBtn.addEventListener('click', () => showScreen('constructorScreen'));
+        finalizeSetupBtn.addEventListener('click', () => {
+            const threshold = parseInt(thresholdInput.value, 10);
+            if (testQuestions.length === 0) { alert('Пожалуйста, добавьте хотя бы один вопрос.'); return; }
+            if (isNaN(threshold) || threshold < 1 || threshold > testQuestions.length) { alert(`Пожалуйста, введите корректное число для прохождения (от 1 до ${testQuestions.length}).`); return; }
+            passingThreshold = threshold;
+            saveCondition = document.querySelector('input[name="saveCondition"]:checked').value;
+            document.getElementById('checkDeviceBtn').style.display = 'inline-flex';
+            document.getElementById('startBtn').style.display = 'none';
+            document.getElementById('deviceCheckStatus').innerHTML = '';
+            showScreen('startInterviewScreen');
+        });
+
+        // --- ЛОГИКА ИНТЕРВЬЮ ---
+        const checkDeviceBtn = document.getElementById('checkDeviceBtn');
+        const deviceCheckStatus = document.getElementById('deviceCheckStatus');
+        const startBtn = document.getElementById('startBtn');
+        const restartBtn = document.getElementById('restartBtn');
+        const recordBtn = document.getElementById('recordBtn'); 
+        const saveBtn = document.getElementById('saveBtn'); 
+        const questionEl = document.getElementById('question'); 
+        const statusEl = document.getElementById('status'); 
+        const resultsList = document.getElementById('resultsList'); 
+        const videoPreview = document.getElementById('videoPreview'); 
+        const resultTitleEl = document.getElementById('resultTitle'); 
+        const resultTextEl = document.getElementById('resultText'); 
+        const historyTableBody = document.getElementById('historyTableBody');
+        const recognitionResultEl = document.getElementById('recognitionResult');
+        let currentQuestionIndex, isListening, mediaRecorder, videoChunks, correctAnswersCount;
+        
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'ru-RU';
+            recognition.continuous = true;
+            recognition.interimResults = true;
+        }
+
+        async function checkDevices() {
+            deviceCheckStatus.textContent = "Проверяем...";
+            deviceCheckStatus.className = '';
+            if (!recognition) {
+                deviceCheckStatus.textContent = 'Ошибка: Ваш браузер не поддерживает распознавание речи. Используйте последнюю версию Google Chrome.';
+                deviceCheckStatus.classList.add('status-error'); return;
+            }
+            try {
+                // теперь используем общую обёртку — запрос произойдёт один раз
+                await getMediaStream();
+                deviceCheckStatus.textContent = '✓ Камера и микрофон готовы!';
+                deviceCheckStatus.classList.add('status-success');
+                checkDeviceBtn.style.display = 'none';
+                startBtn.style.display = 'inline-flex';
+            } catch (err) {
+                deviceCheckStatus.textContent = 'Ошибка: Не удалось получить доступ к камере или микрофона.';
+                deviceCheckStatus.classList.add('status-error');
+            }
+        }
+
+        function evaluateAnswer(transcript, question) {
+            const spokenText = transcript.toLowerCase();
+            const expectedText = question.correctAnswer.toLowerCase();
+            if (spokenText.includes(expectedText)) {
+                return { text: `Оценка: 'Правильно' (ключевая фраза найдена)`, class: "evaluation-correct" };
+            } else {
+                return { text: `Оценка: 'Неправильно' (фраза не найдена)`, class: "evaluation-incorrect" };
+            }
+        }
+
+        recognition.onresult = (event) => {
+            let final_transcript = ''; let interim_transcript = '';
+            for (let i = event.resultIndex; i < event.results.length; ++i) {
+                if (event.results[i].isFinal) { final_transcript += event.results[i][0].transcript; } else { interim_transcript += event.results[i][0][0].transcript; }
+            }
+            recognitionResultEl.innerHTML = `<span style="font-weight: bold;">${final_transcript}</span><span style="color: var(--secondary-text);">${interim_transcript}</span>`;
+        };
+
+        recognition.onerror = (event) => { console.error('Ошибка распознавания:', event.error); statusEl.textContent = 'Ошибка: ' + event.error; };
+        
+        recordBtn.addEventListener('click', () => {
+            if (isListening) { recognition.stop(); } else { recognitionResultEl.innerHTML = ''; recognition.start(); }
+        });
+
+        recognition.onstart = () => { isListening = true; recordBtn.classList.add('recording'); recordBtn.textContent = 'Закончить ответ'; statusEl.textContent = 'Говорите...'; };
+
+        recognition.onend = () => {
+            isListening = false;
+            recordBtn.classList.remove('recording');
+            recordBtn.textContent = 'Начать ответ';
+            statusEl.textContent = 'Ответ записан. Идет оценка...';
+
+            const final_transcript_element = recognitionResultEl.querySelector('span[style*="bold"]');
+            const final_transcript = final_transcript_element ? final_transcript_element.textContent.trim() : '';
+
+            if (final_transcript) {
+                const evaluation = evaluateAnswer(final_transcript, testQuestions[currentQuestionIndex]);
+                if (evaluation.class === 'evaluation-correct') correctAnswersCount++;
+                displayResult(final_transcript, evaluation);
+                recordBtn.disabled = true;
+
+                setTimeout(() => {
+                    if (currentQuestionIndex === testQuestions.length - 1) { finishInterview(); } else { displayNextQuestion(); }
+                }, 2000);
+            } else {
+                statusEl.textContent = "Ответ не был распознан. Переход к следующему вопросу...";
+                displayResult("(ответ не распознан)", { text: "Оценка: 'Неправильно'", class: "evaluation-incorrect" });
+                setTimeout(() => {
+                    if (currentQuestionIndex === testQuestions.length - 1) { finishInterview(); } else { displayNextQuestion(); }
+                }, 2000);
+            }
+        };
+
+        function displayNextQuestion() { currentQuestionIndex++; if (currentQuestionIndex < testQuestions.length) { questionEl.textContent = testQuestions[currentQuestionIndex].text; recordBtn.disabled = false; statusEl.textContent = "Нажмите 'Начать ответ'"; recognitionResultEl.innerHTML = ''; } else { finishInterview(); } }
+        
+        async function finishInterview() {
+            const passed = correctAnswersCount >= passingThreshold;
+            resultTitleEl.textContent = passed ? "Поздравляем, скрининг пройден!" : "К сожалению, скрининг не пройден.";
+            resultTextEl.textContent = `Вы набрали ${correctAnswersCount} из ${testQuestions.length} правильных ответов.`;
+            const shouldShowSaveButton = passed || saveCondition === 'all';
+            if (shouldShowSaveButton) { saveBtn.style.display = 'inline-flex'; }
+            showScreen('resultsScreen');
+            const blob = await stopRecordingAndCamera();
+            finalVideoBlob = blob;
+            if (shouldShowSaveButton && (!finalVideoBlob || finalVideoBlob.size === 0)) { saveBtn.textContent = 'Ошибка записи'; saveBtn.disabled = true;}
+            saveHistory({ date: new Date(), outcome: passed ? "Пройден" : "Не пройден", score: `${correctAnswersCount} / ${testQuestions.length}` });
+        }
+        
+        function displayResult(transcript, evaluation) { const li = document.createElement('li'); li.classList.add('result-item'); li.innerHTML = `<p><strong>Вопрос:</strong> ${testQuestions[currentQuestionIndex].text}</p><p><strong>Распознанный ответ:</strong> ${transcript}</p><p><span class="${evaluation.class}">${evaluation.text}</span></p>`; resultsList.appendChild(li); }
+        
+        function saveHistory(result) {
+            interviewHistory.unshift(result);
+            document.getElementById('historySection').style.display = 'block';
+            renderHistoryTable();
+        }
+        function renderHistoryTable() {
+            historyTableBody.innerHTML = '';
+            if (interviewHistory.length === 0) { historyTableBody.innerHTML = `<tr><td colspan="3" style="text-align: center;">История пока пуста.</td></tr>`; return; }
+            interviewHistory.forEach(item => { const date = new Date(item.date); const formattedDate = date.toLocaleString('ru-RU'); const row = `<tr><td>${formattedDate}</td><td class="${item.outcome === 'Пройден' ? 'evaluation-correct' : 'evaluation-incorrect'}">${item.outcome}</td><td>${item.score}</td></tr>`; historyTableBody.innerHTML += row; });
+        }
+        
+        checkDeviceBtn.addEventListener('click', checkDevices);
+
+        startBtn.addEventListener('click', async () => {
+            resetInterviewState();
+            const ready = await initializeInterview();
+            if (ready) { showScreen('interviewScreen'); mediaRecorder.start(); displayNextQuestion(); }
+        });
+        
+        function resetApp() {
+            testQuestions = []; renderConstructorList(); thresholdInput.value = 1;
+            document.querySelector('input[name="saveCondition"][value="successful"]').checked = true;
+            correctAnswerInput.value = '';
+
+            // Если у нас есть глобальный медиапоток — останавливаем его при полном сбросе/перезапуске
+            if (globalStream) {
+                try { globalStream.getTracks().forEach(track => track.stop()); }
+                catch (e) { console.warn('Ошибка при остановке globalStream:', e); }
+                globalStream = null;
+            }
+            if (videoPreview && videoPreview.srcObject) {
+                videoPreview.srcObject = null;
+            }
+
+            showScreen('instructionsScreen');
+        }
+
+        restartBtn.addEventListener('click', resetApp);
+
+        saveBtn.addEventListener('click', () => {
+            if (!finalVideoBlob) { alert('Видеофайл еще не готов или запись не удалась.'); return; }
+            const url = URL.createObjectURL(finalVideoBlob); const a = document.createElement('a'); a.style = 'display: none'; a.href = url; const timestamp = new Date().toISOString().slice(0, 19).replace(/:/g, "-"); a.download = `interview_recording_${timestamp}.webm`; a.click(); window.URL.revokeObjectURL(url); a.remove();
+            
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Сохранено!';
+
+            setTimeout(() => {
+                resetApp();
+            }, 2000);
+        });
+
+        document.addEventListener('DOMContentLoaded', () => {
+            showScreen('instructionsScreen');
+        });
+
+        // Неизмененные функции для полноты
+        function resetInterviewState() { currentQuestionIndex = -1; isListening = false; mediaRecorder = null; videoChunks = []; correctAnswersCount = 0; finalVideoBlob = null; resultsList.innerHTML = ''; recordBtn.disabled = true; saveBtn.style.display = 'none'; }
+        async function initializeInterview() {
+            try {
+                const stream = await getMediaStream();
+                if (!stream) throw new Error('Нет медиа-потока');
+                videoPreview.srcObject = stream;
+                mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
+                mediaRecorder.ondataavailable = (event) => { if (event.data && event.data.size > 0) videoChunks.push(event.data); };
+                return true;
+            } catch (err) { alert('Ошибка: не удалось получить доступ к камере или микрофону.'); showScreen('startInterviewScreen'); return false; }
+        }
+        function stopRecordingAndCamera() {
+            return new Promise(resolve => {
+                if (!mediaRecorder || mediaRecorder.state !== 'recording') {
+                    resolve(null);
+                    return;
+                }
+                mediaRecorder.onstop = () => { const blob = new Blob(videoChunks, { type: 'video/webm' }); resolve(blob); };
+                mediaRecorder.stop();
+            });
+        }
+
+        // На случай закрытия вкладки — аккуратно остановим поток
+        window.addEventListener('beforeunload', () => {
+            if (globalStream) {
+                try { globalStream.getTracks().forEach(t => t.stop()); }
+                catch (e) { /* ignore */ }
+                globalStream = null;
+            }
+        });
+
+        // --- ADDED: логика работы с загруженным видео и кнопкой скачивания полного HTML ---
+        (function() {
+            const introVideoInput = document.getElementById('introVideoInput');
+            const uploadedVideoContainer = document.getElementById('uploadedVideoContainer');
+            const uploadedVideo = document.getElementById('uploadedVideo');
+            const playUploadedVideoBtn = document.getElementById('playUploadedVideoBtn');
+            const downloadFullHtmlBtn = document.getElementById('downloadFullHtmlBtn');
+
+            // при выборе файла — сохраняем URL и файл
+            if (introVideoInput) {
+                introVideoInput.addEventListener('change', (e) => {
+                    const file = e.target.files && e.target.files[0];
+                    if (file) {
+                        if (uploadedIntroVideoURL) URL.revokeObjectURL(uploadedIntroVideoURL);
+                        uploadedIntroVideoURL = URL.createObjectURL(file);
+                        uploadedIntroVideoFile = file;
+                    } else {
+                        if (uploadedIntroVideoURL) URL.revokeObjectURL(uploadedIntroVideoURL);
+                        uploadedIntroVideoURL = null;
+                        uploadedIntroVideoFile = null;
+                    }
+                });
+            }
+
+            // при создании теста — подготавливаем контейнер для показа видео (если был загружен)
+            if (finalizeSetupBtn) {
+                finalizeSetupBtn.addEventListener('click', () => {
+                    if (uploadedIntroVideoURL && uploadedVideo) {
+                        uploadedVideo.src = uploadedIntroVideoURL;
+                        uploadedVideoContainer.style.display = 'block';
+                    } else if (uploadedVideoContainer) {
+                        uploadedVideoContainer.style.display = 'none';
+                    }
+                });
+            }
+
+            // при старте теста — также убеждаемся, что контейнер видим/подготовлен
+            if (startBtn) {
+                startBtn.addEventListener('click', () => {
+                    if (uploadedIntroVideoURL && uploadedVideo) {
+                        uploadedVideo.src = uploadedIntroVideoURL;
+                        uploadedVideoContainer.style.display = 'block';
+                    } else if (uploadedVideoContainer) {
+                        uploadedVideoContainer.style.display = 'none';
+                    }
+                });
+            }
+
+            // кнопка воспроизведения загруженного видео (работает как play/pause)
+            if (playUploadedVideoBtn && uploadedVideo) {
+                playUploadedVideoBtn.addEventListener('click', () => {
+                    if (uploadedVideo.paused) {
+                        uploadedVideo.play();
+                        playUploadedVideoBtn.textContent = "Пауза";
+                    } else {
+                        uploadedVideo.pause();
+                        playUploadedVideoBtn.textContent = "Запустить видео";
+                    }
+                });
+            }
+
+            // кнопка: скачать текущую страницу целиком как HTML (полный файл)
+            if (downloadFullHtmlBtn) {
+                downloadFullHtmlBtn.addEventListener('click', () => {
+                    try {
+                        const fullHtml = '<!DOCTYPE html>\n' + document.documentElement.outerHTML;
+                        const blob = new Blob([fullHtml], { type: 'text/html' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        const ts = new Date().toISOString().slice(0,19).replace(/:/g,'-');
+                        a.download = `full_test_${ts}.html`;
+                        document.body.appendChild(a);
+                        a.click();
+                        a.remove();
+                        URL.revokeObjectURL(url);
+                    } catch (err) {
+                        alert('Ошибка при формировании файла: ' + err.message);
+                    }
+                });
+            }
+        })();
+        // --- END ADDED ---
+
+    </script>
+</body>
+</html>
